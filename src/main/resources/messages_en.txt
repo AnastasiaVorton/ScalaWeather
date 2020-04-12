@@ -1,0 +1,1 @@
+greeting: Hi! Wanna know the weather today? Just type the location and we'll tell you what the weather is. \nIf you want to know more or you're stuck -- type help.
