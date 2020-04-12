@@ -1,1 +1,4 @@
 greeting: Hi! Wanna know the weather today? Just type the location and we'll tell you what the weather is. \nIf you want to know more or you're stuck -- type help.
+weather.summary: The weather in {0} today is {1}.
+weather.temperature: The temperature will vary from {0} to {1}.
+help: I can do several thongs for you: \n1) show you the weather for today -- just type the name of the city and wait a little bit\n2) you can always call for help -- type help\n3) type stop if you want to exit\nNow I am waiting foy your command! Enjoy!
