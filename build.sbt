@@ -8,7 +8,10 @@ lazy val akkaVersion = "2.6.3"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-http"   % "10.1.11",
+  "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.osinka.i18n" %% "scala-i18n" % "1.0.3",
-  "org.scalaj" %% "scalaj-http" % "2.4.2",
-  "com.typesafe.play" %% "play-json" % "2.8.1"
+  "com.typesafe.play" %% "play-json" % "2.8.1",
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
+  "org.scalatest" %% "scalatest" % "3.1.0" % Test
 )

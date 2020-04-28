@@ -1,42 +1,80 @@
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import play.api.libs.json.{JsValue, Json}
-import scalaj.http.{Http, HttpResponse}
+import akka.http.scaladsl.Http
+import akka.actor.ActorSystem
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.ActorMaterializer
+
+import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
 
 object Fetcher {
   sealed trait Command
   case class FetchWoeid(city: String, replyTo: ActorRef[String]) extends Command
   case class FetchWeather(woeid: String, replyTp: ActorRef[Array[String]]) extends Command
 
+  implicit val system: ActorSystem = ActorSystem()
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+
   def apply(printer: ActorRef[Printer.Command]): Behavior[Command] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case FetchWoeid(city, replyTo) =>
-          val locationResponse: HttpResponse[String] = Http("https://www.metaweather.com/api/location/search/")
-            .param("query", city)
-            .asString
+          val query = s"https://www.metaweather.com/api/location/search/?query=$city"
 
-          val locationJson: JsValue = Json.parse(locationResponse.body.toString().replaceAll("(\\[|\\])", ""))
+          val locationResponse: Future[HttpResponse] =
+            Http().singleRequest(HttpRequest(uri = query))
 
-          val woeid = (locationJson \ "woeid").get.toString().replaceAll("\"", "")
+          val result: Future[String] = locationResponse.flatMap {
+            case HttpResponse(StatusCodes.OK, _, e, _) =>
+              Unmarshal(e).to[String]
+            case HttpResponse(status, _, e, _) =>
+              e.discardBytes()
+              Future.failed(sys.error("something wrong"))
+          }
 
-          replyTo ! woeid
+          result
+            .onComplete {
+              case Success(res) =>
+                val locationJson: JsValue = Json.parse(res.replaceAll("(\\[|\\])", ""))
+                val woeid = (locationJson \ "woeid").get.toString()
+
+                replyTo ! woeid
+              case Failure(_)   => sys.error("something wrong")
+            }
 
           Behaviors.same
 
         case FetchWeather(woeid, replyTo) =>
-          val weatherResponse: HttpResponse[String] = Http(s"https://www.metaweather.com/api/location/$woeid/")
-            .asString
+          val query = s"https://www.metaweather.com/api/location/$woeid/"
 
-          val weatherJson: JsValue = Json.parse(weatherResponse.body.toString())
+          val weatherResponse: Future[HttpResponse] =
+            Http().singleRequest(HttpRequest(uri = query))
 
-          val weatherToday = (weatherJson \ "consolidated_weather").get(0)
+          val result: Future[String] = weatherResponse.flatMap {
+            case HttpResponse(StatusCodes.OK, _, e, _) =>
+              Unmarshal(e).to[String]
+            case HttpResponse(status, _, e, _) =>
+              e.discardBytes()
+              Future.failed(sys.error("something wrong"))
+          }
 
-          val weatherState = (weatherToday \ "weather_state_name").get.toString().replaceAll("\"", "").toLowerCase
-          val lowestTemp = (weatherToday \ "min_temp").get.toString()
-          val highestTemp = (weatherToday \ "max_temp").get.toString()
+          result
+            .onComplete {
+              case Success(res) =>
+                val locationJson: JsValue = Json.parse(res)
+                val weatherToday = (locationJson \ "consolidated_weather").get(0)
 
-          replyTo ! Array(weatherState, lowestTemp, highestTemp)
+                val weatherState = (weatherToday \ "weather_state_name").get.toString()
+                  .replaceAll("\"", "").toLowerCase
+                val lowestTemp = (weatherToday \ "min_temp").get.toString()
+                val highestTemp = (weatherToday \ "max_temp").get.toString()
+
+                replyTo ! Array(weatherState, lowestTemp, highestTemp)
+              case Failure(_)   => sys.error("something wrong")
+            }
 
           Behaviors.same
 
