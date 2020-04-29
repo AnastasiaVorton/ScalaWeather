@@ -8,7 +8,6 @@ import com.osinka.i18n.{Lang, Messages}
 import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 
-
 object Printer {
   sealed trait Command
   case object Greet extends Command
@@ -18,7 +17,7 @@ object Printer {
 
   case class AskForWoeid(city: String) extends Command
   case class AskForWeather(woeid: String) extends Command
-  case class PrintWeather(weatherData: Array[String]) extends Command
+  case class PrintWeather(weatherData: WeatherData) extends Command
   case class ReceiveFetcher(fetcher: ActorRef[Fetcher.Command]) extends Command
 
   // language settings
@@ -81,7 +80,7 @@ object Printer {
 
         // fetch weather data by woeid
         case AskForWeather(woeid) =>
-          ctx.ask(fetcher.get, (ref: ActorRef[Array[String]]) => Fetcher.FetchWeather(woeid, ref)) {
+          ctx.ask(fetcher.get, (ref: ActorRef[WeatherData]) => Fetcher.FetchWeather(woeid, ref)) {
             case Success(weatherParams) =>
               ctx.self ! PrintWeather(weatherParams)
               Continue
@@ -95,8 +94,8 @@ object Printer {
 
         // print weather data
         case PrintWeather(weatherData) =>
-          println(Messages("weather.summary", city.get, weatherData(0)))
-          println(Messages("weather.temperature", weatherData(1), weatherData(2)))
+          println(Messages("weather.summary", city.get, weatherData.weatherState))
+          println(Messages("weather.temperature", weatherData.lowestTemp, weatherData.highestTemp))
           ctx.self ! ReadAndProcess
           Behaviors.same
 

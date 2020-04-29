@@ -10,10 +10,12 @@ import akka.stream.ActorMaterializer
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
+case class WeatherData(weatherState: String, lowestTemp: String, highestTemp: String)
+
 object Fetcher {
   sealed trait Command
   case class FetchWoeid(city: String, replyTo: ActorRef[String]) extends Command
-  case class FetchWeather(woeid: String, replyTp: ActorRef[Array[String]]) extends Command
+  case class FetchWeather(woeid: String, replyTo: ActorRef[WeatherData]) extends Command
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -72,7 +74,7 @@ object Fetcher {
                 val lowestTemp = (weatherToday \ "min_temp").get.toString()
                 val highestTemp = (weatherToday \ "max_temp").get.toString()
 
-                replyTo ! Array(weatherState, lowestTemp, highestTemp)
+                replyTo ! WeatherData(weatherState, lowestTemp, highestTemp)
               case Failure(_)   => sys.error("something wrong")
             }
 
