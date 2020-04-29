@@ -10,7 +10,7 @@ import akka.stream.ActorMaterializer
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
 
-case class WeatherData(weatherState: String, lowestTemp: String, highestTemp: String)
+case class WeatherData(weatherState: String, lowestTemp: Double, highestTemp: Double)
 
 object Fetcher {
   sealed trait Command
@@ -70,9 +70,9 @@ object Fetcher {
                 val weatherToday = (locationJson \ "consolidated_weather").get(0)
 
                 val weatherState = (weatherToday \ "weather_state_name").get.toString()
-                  .replaceAll("\"", "").toLowerCase
-                val lowestTemp = (weatherToday \ "min_temp").get.toString()
-                val highestTemp = (weatherToday \ "max_temp").get.toString()
+                  .replaceAll("\"", "").toLowerCase()
+                val lowestTemp = (weatherToday \ "min_temp").get.toString().toDouble
+                val highestTemp = (weatherToday \ "max_temp").get.toString().toDouble
 
                 replyTo ! WeatherData(weatherState, lowestTemp, highestTemp)
               case Failure(_)   => sys.error("something wrong")
