@@ -94,7 +94,7 @@ object Printer {
 
         // print weather data
         case PrintWeather(weatherData) =>
-          println(Messages("weather.summary", city.get, weatherData.weatherState))
+          println(Messages("weather.summary", city.get, weatherData.weatherState.toLowerCase()))
           println(Messages("weather.temperature", f"${weatherData.lowestTemp}%1.1f", f"${weatherData.highestTemp}%1.1f"))
           ctx.self ! ReadAndProcess
           Behaviors.same

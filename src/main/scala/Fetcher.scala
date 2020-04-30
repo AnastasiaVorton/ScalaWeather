@@ -1,6 +1,5 @@
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-import play.api.libs.json.{JsValue, Json}
 import akka.http.scaladsl.Http
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model._
@@ -9,6 +8,9 @@ import akka.stream.ActorMaterializer
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success}
+import play.api.libs.json._
+import play.api.libs.json.Reads._
+import play.api.libs.functional.syntax._
 
 case class WeatherData(weatherState: String, lowestTemp: Double, highestTemp: Double)
 
@@ -69,12 +71,19 @@ object Fetcher {
                 val locationJson: JsValue = Json.parse(res)
                 val weatherToday = (locationJson \ "consolidated_weather").get(0)
 
-                val weatherState = (weatherToday \ "weather_state_name").get.toString()
-                  .replaceAll("\"", "").toLowerCase()
-                val lowestTemp = (weatherToday \ "min_temp").get.toString().toDouble
-                val highestTemp = (weatherToday \ "max_temp").get.toString().toDouble
+                implicit val weatherDataReads: Reads[WeatherData] = (
+                  (JsPath \ "weather_state_name").read[String] and
+                  (JsPath \ "min_temp").read[Double] and
+                    (JsPath \ "max_temp").read[Double]
+                  )(WeatherData.apply _)
 
-                replyTo ! WeatherData(weatherState, lowestTemp, highestTemp)
+                val weatherResult: JsResult[WeatherData] = weatherToday.validate[WeatherData](weatherDataReads)
+
+                weatherResult match {
+                  case data: JsSuccess[WeatherData] => replyTo ! data.get
+                  case e: JsError           => println("Errors: " + JsError.toJson(e).toString())
+                }
+
               case Failure(_)   => sys.error("something wrong")
             }
 
