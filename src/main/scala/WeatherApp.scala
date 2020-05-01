@@ -2,7 +2,9 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import java.util.Locale
 
-object WeatherApp {
+import com.typesafe.scalalogging.LazyLogging
+
+object WeatherApp extends LazyLogging{
   sealed trait Command
   case object Start extends Command
   case object Stop extends Command
@@ -21,7 +23,9 @@ object WeatherApp {
 
         Behaviors.same
 
-      case Stop => Behaviors.stopped
+      case Stop =>
+        logger.info(s"Stoping Weather app ${ctx.self}")
+        Behaviors.stopped
 
       case _ => Behaviors.same
     }

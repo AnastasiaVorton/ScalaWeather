@@ -39,5 +39,8 @@ While you run the sbt shell type `test` to run the project tests
 sbt:Weather> run
 ```
 
+## Logging
+All the logs from the program execution are saved to `lod.txt` file at the root of the project. 
+
 ## Licence
 [MIT](https://choosealicense.com/licenses/mit/)
