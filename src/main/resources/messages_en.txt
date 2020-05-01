@@ -3,6 +3,6 @@ type.command:  Type your command:
 weather.summary: The weather in {0} today is {1}.
 weather.temperature: The temperature outside will vary from {0}Сº to {1}Сº.
 help: I can do several thongs for you: \n1) show you the weather for today -- just type the name of the city (in English) and wait a little bit\n2) you can always call for help -- type help\n3) type stop if you want to exit\nNow I am waiting for your command! Enjoy!
-error.woeid: Oops, something went wrong when we tried to get the data about the city you entered. Please try another one, maybe a bigger city. And remember that it must be in English.
+error.woeid: Oops, something went wrong when we tried to get the data about the city you entered.\n Please try another one, maybe a bigger city. And remember that it must be in English.
 error.weather: Oops, something went wrong when we tried to get the weather for the city you entered. Please try another one.
 city.short: Seems like you entered an empty city name. Try again!
