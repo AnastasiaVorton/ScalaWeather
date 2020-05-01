@@ -13,5 +13,8 @@ libraryDependencies ++= Seq(
   "com.osinka.i18n" %% "scala-i18n" % "1.0.3",
   "com.typesafe.play" %% "play-json" % "2.8.1",
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest" %% "scalatest" % "3.1.0" % Test
+  "org.scalatest" %% "scalatest" % "3.1.0" % Test,
+  "org.mockito" %% "mockito-scala" % "1.14.0",
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 )

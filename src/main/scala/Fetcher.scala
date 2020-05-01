@@ -1,20 +1,16 @@
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.stream.ActorMaterializer
+import com.typesafe.scalalogging.LazyLogging
+import data.WeatherData
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 import play.api.libs.json._
 import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
 
-case class WeatherData(weatherState: String, lowestTemp: Double, highestTemp: Double)
-
-object Fetcher {
+object Fetcher extends LazyLogging {
   sealed trait Command
   case class FetchWoeid(city: String, replyTo: ActorRef[String]) extends Command
   case class FetchWeather(woeid: String, replyTo: ActorRef[WeatherData]) extends Command
@@ -22,48 +18,34 @@ object Fetcher {
   implicit val system: ActorSystem = ActorSystem()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
+  val weatherDataRestClient = new WeatherDataRestClient()
+
   def apply(printer: ActorRef[Printer.Command]): Behavior[Command] =
     Behaviors.receive { (ctx, msg) =>
       msg match {
         case FetchWoeid(city, replyTo) =>
-          val query = s"https://www.metaweather.com/api/location/search/?query=$city"
+          logger.info(s"Fetcher ${ctx.self} received FetchWoeid")
 
-          val locationResponse: Future[HttpResponse] =
-            Http().singleRequest(HttpRequest(uri = query))
+          val woeidData = weatherDataRestClient.fetchWoeidDataByCity(city)
 
-          val result: Future[String] = locationResponse.flatMap {
-            case HttpResponse(StatusCodes.OK, _, e, _) =>
-              Unmarshal(e).to[String]
-            case HttpResponse(status, _, e, _) =>
-              e.discardBytes()
-              Future.failed(sys.error("something wrong"))
-          }
-
-          result
+          woeidData
             .onComplete {
               case Success(res) =>
                 val locationJson: JsValue = Json.parse(res.replaceAll("(\\[|\\])", ""))
                 val woeid = (locationJson \ "woeid").get.toString()
+                logger.info(s"woeid $woeid successfully fetched")
 
                 replyTo ! woeid
-              case Failure(_)   => sys.error("something wrong")
+              case Failure(error)   =>
+                logger.error(s"Request failed with error: $error")
             }
 
           Behaviors.same
 
         case FetchWeather(woeid, replyTo) =>
-          val query = s"https://www.metaweather.com/api/location/$woeid/"
+          logger.info(s"Fetcher ${ctx.self} received FetchWeather")
 
-          val weatherResponse: Future[HttpResponse] =
-            Http().singleRequest(HttpRequest(uri = query))
-
-          val result: Future[String] = weatherResponse.flatMap {
-            case HttpResponse(StatusCodes.OK, _, e, _) =>
-              Unmarshal(e).to[String]
-            case HttpResponse(status, _, e, _) =>
-              e.discardBytes()
-              Future.failed(sys.error("something wrong"))
-          }
+          val result = weatherDataRestClient.fetchWeatherDataByWoeid(woeid)
 
           result
             .onComplete {
@@ -80,11 +62,16 @@ object Fetcher {
                 val weatherResult: JsResult[WeatherData] = weatherToday.validate[WeatherData](weatherDataReads)
 
                 weatherResult match {
-                  case data: JsSuccess[WeatherData] => replyTo ! data.get
-                  case e: JsError           => println("Errors: " + JsError.toJson(e).toString())
+                  case data: JsSuccess[WeatherData] =>
+                    replyTo ! data.get
+                    logger.info(s"WeatherData ${data.get} successfully fetched")
+                  case e: JsError           =>
+                    logger.error(s"An error accured while parsing weather data")
+                    logger.error("Errors: " + JsError.toJson(e).toString())
                 }
 
-              case Failure(_)   => sys.error("something wrong")
+              case Failure(error)   =>
+                logger.error(s"Request failed with error: $error")
             }
 
           Behaviors.same

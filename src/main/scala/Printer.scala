@@ -4,11 +4,13 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.util.Timeout
 import com.osinka.i18n.{Lang, Messages}
+import com.typesafe.scalalogging.LazyLogging
+import data.WeatherData
 
 import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 
-object Printer {
+object Printer extends LazyLogging {
   sealed trait Command
   case object Greet extends Command
   case object ReadAndProcess extends Command
@@ -33,12 +35,15 @@ object Printer {
       msg match {
         // greet the user and start reading commands
         case Greet =>
+          logger.info(s"Printer ${ctx.self} started")
           println(Messages("greeting"))
           ctx.self ! ReadAndProcess
+
           Behaviors.same
 
         case ReceiveFetcher(f) =>
           fetcher = Option(f)
+
           Behaviors.same
 
         // read and process users input
@@ -50,7 +55,11 @@ object Printer {
             case "help" => ctx.self ! PrintHelp
             case "stop" =>
               app ! WeatherApp.Stop
+
               Behaviors.stopped
+            case "" =>
+              println(Messages("city.short"))
+              ctx.self ! ReadAndProcess
             case _ =>
               this.city = Option(city)
               ctx.self ! AskForWoeid(city)
@@ -62,16 +71,21 @@ object Printer {
         case PrintHelp =>
           println(Messages("help"))
           ctx.self ! ReadAndProcess
+
           Behaviors.same
 
         // fetch cities woeid
         case AskForWoeid(city) =>
           ctx.ask(fetcher.get, (ref: ActorRef[String]) => Fetcher.FetchWoeid(city, ref)) {
             case Success(woeid) =>
+              logger.info(s"Woeid received by ${ctx.self}")
               ctx.self ! AskForWeather(woeid)
               Continue
-            case Failure(_) =>
-              println(Messages("error"))
+            case Failure(error) =>
+              logger.error(s"An error occurred while fetching woied")
+              logger.error(s"Error: $error")
+
+              println(Messages("error.woeid"))
               ctx.self ! ReadAndProcess
               Continue
             case _ => Continue
@@ -82,10 +96,14 @@ object Printer {
         case AskForWeather(woeid) =>
           ctx.ask(fetcher.get, (ref: ActorRef[WeatherData]) => Fetcher.FetchWeather(woeid, ref)) {
             case Success(weatherParams) =>
+              logger.info(s"Weather data received by ${ctx.self}")
               ctx.self ! PrintWeather(weatherParams)
               Continue
-            case Failure(_) =>
-              println(Messages("error"))
+            case Failure(error) =>
+              logger.error(s"An error occurred while fetching weather data")
+              logger.error(s"Error: $error")
+
+              println(Messages("error.weather"))
               ctx.self ! ReadAndProcess
               Continue
             case _ => Continue
