@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.Materializer
 import com.typesafe.scalalogging.LazyLogging
-
 import scala.concurrent.{ExecutionContext, Future}
 
 class WeatherDataRestClient(implicit actorSystem: ActorSystem, mat: Materializer, executionContext: ExecutionContext) extends LazyLogging {
