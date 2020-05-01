@@ -52,7 +52,11 @@ object Printer extends LazyLogging {
           val city = scala.io.StdIn.readLine()
 
           city match {
-            case "help" => ctx.self ! PrintHelp
+            case "help" =>
+              ctx.self ! PrintHelp
+
+              Behaviors.same
+
             case "stop" =>
               app ! WeatherApp.Stop
 
@@ -60,12 +64,14 @@ object Printer extends LazyLogging {
             case "" =>
               println(Messages("city.short"))
               ctx.self ! ReadAndProcess
+
+              Behaviors.same
             case _ =>
               this.city = Option(city)
               ctx.self ! AskForWoeid(city)
-          }
 
-          Behaviors.same
+              Behaviors.same
+          }
 
         // print help and continue reading users commands
         case PrintHelp =>
